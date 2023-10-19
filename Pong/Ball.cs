@@ -9,7 +9,13 @@ namespace Pong;
 
 public class Ball : IDrawable, IUpdateable, IGameComponent, ICollidable
 {
-    public Texture2D Texture { get { return _texture; } }
+    public Texture2D Texture => _texture;
+    public bool Enabled => true;
+    public int UpdateOrder => 0;
+    public int DrawOrder => 0;
+    public bool Visible => true;
+    public RectangleF BorderBox => _borderBox;
+    public Vector2 Position => _position;
     private readonly Texture2D _texture;
     private readonly SpriteBatch _spriteBatch;
     private readonly int _screenWidth;
@@ -18,17 +24,7 @@ public class Ball : IDrawable, IUpdateable, IGameComponent, ICollidable
     private float _ballSpeedX = 0f;
     private float _ballSpeedY = 0f;
     private Vector2 _position;
-    private CollisionBorder _collisionBorder;
     private RectangleF _borderBox;
-    public RectangleF BorderBox => _borderBox;
-    public bool Enabled => true;
-    public int UpdateOrder => 0;
-    public int DrawOrder => 0;
-    public bool Visible => true;
-
-    public Vector2 Position => _position;
-
-    public CollisionBorder Border => _collisionBorder;
 
     public Ball(SpriteBatch spriteBatch, Texture2D texture, int screenWidth, int screenHeight)
     {
@@ -42,6 +38,7 @@ public class Ball : IDrawable, IUpdateable, IGameComponent, ICollidable
     public event EventHandler<EventArgs> UpdateOrderChanged;
     public event EventHandler<EventArgs> DrawOrderChanged;
     public event EventHandler<EventArgs> VisibleChanged;
+    public event EventHandler<PointGrantedEventArgs> PointGranted;
 
     public void Draw(GameTime gameTime)
     {
@@ -60,10 +57,14 @@ public class Ball : IDrawable, IUpdateable, IGameComponent, ICollidable
 
     public void Update(GameTime gameTime)
     {
-        _position.X += _ballSpeedX * (float)gameTime.ElapsedGameTime.TotalSeconds;
+        if(CheckPositionX())
+        {
+            ResetBall();
+            return;
+        }
+        UpdatePositionX(gameTime);
         UpdatePositionY(gameTime);
-        _borderBox.X = _position.X - ((float)_texture.Width / 2);
-        _borderBox.Y = _position.Y - ((float)_texture.Height / 2);
+        UpdateBorderBoxes();
     }
 
     public void Initialize()
@@ -83,6 +84,25 @@ public class Ball : IDrawable, IUpdateable, IGameComponent, ICollidable
             CalculateSpeed();
     }
 
+    private bool CheckPositionX()
+    {
+        if (_position.X <= 0)
+        {
+            GrantPoint(false); return true;
+        }
+        if (_position.X >=800)
+        {
+            GrantPoint(true); return true;
+        }
+        return false;
+    }
+
+    private void UpdateBorderBoxes()
+    {
+        _borderBox.X = _position.X - ((float)_texture.Width / 2);
+        _borderBox.Y = _position.Y - ((float)_texture.Height / 2);
+    }
+
     private void CalculateSpeed()
     {
         if (_ballSpeedX >= 300f)
@@ -93,7 +113,6 @@ public class Ball : IDrawable, IUpdateable, IGameComponent, ICollidable
         _ballSpeedX *= -1.2f;
     }
 
-
     private void UpdatePositionY(GameTime gameTime)
     {
         if (_position.Y + Texture.Height / 2 >= 480 || _position.Y - Texture.Height / 2 <= 0)
@@ -101,5 +120,27 @@ public class Ball : IDrawable, IUpdateable, IGameComponent, ICollidable
             _ballSpeedY *= -1;
         }
         _position.Y += _ballSpeedY * (float)gameTime.ElapsedGameTime.TotalSeconds;
+    }
+
+    private void UpdatePositionX(GameTime gameTime)
+    {
+        _position.X += _ballSpeedX * (float)gameTime.ElapsedGameTime.TotalSeconds;
+    }
+
+    private void GrantPoint(bool playerOneGetPoint)
+    {
+        if (PointGranted != null)
+        {
+            PointGranted(this, new PointGrantedEventArgs(playerOneGetPoint));
+        }
+    }
+
+    private void ResetBall()
+    {
+        _position.X = _screenWidth / 2;
+        _position.Y = _screenHeight / 2;
+        _ballSpeedX = _ballSpeed * RandomGenerator.GetFromCollection(new[] { -1, 1 });
+        _ballSpeedY = _ballSpeed * RandomGenerator.GetFromCollection(new[] { -1, 1 });
+        UpdateBorderBoxes();
     }
 }
