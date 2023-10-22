@@ -31,10 +31,7 @@ public class CollisionService
         {
             if (Checkborders(mainObject, texture))
             {
-                if (OnCollisionDetected != null)
-                {
-                    OnCollisionDetected(this, new CollisionEventArgs(new[] { mainObject.GetHashCode(), texture.GetHashCode()}));
-                }
+                OnCollisionDetected?.Invoke(this, new CollisionEventArgs(new[] { mainObject.GetHashCode(), texture.GetHashCode() }));
             }
 
         }

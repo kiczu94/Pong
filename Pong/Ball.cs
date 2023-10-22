@@ -16,6 +16,7 @@ public class Ball : IDrawable, IUpdateable, IGameComponent, ICollidable
     public bool Visible => true;
     public RectangleF BorderBox => _borderBox;
     public Vector2 Position => _position;
+    private bool _isGameEnded = false;
     private readonly Texture2D _texture;
     private readonly SpriteBatch _spriteBatch;
     private readonly int _screenWidth;
@@ -42,29 +43,35 @@ public class Ball : IDrawable, IUpdateable, IGameComponent, ICollidable
 
     public void Draw(GameTime gameTime)
     {
-        _spriteBatch.Begin();
-        _spriteBatch.Draw(texture: _texture,
-            position: _position,
-            sourceRectangle: null,
-            Color.White,
-            rotation: 0,
-            origin: new Vector2(_texture.Height / 2, _texture.Width / 2),
-            scale: 1f,
-            effects: SpriteEffects.None,
-            layerDepth: 0);
-        _spriteBatch.End();
+        if (!_isGameEnded)
+        {
+            _spriteBatch.Begin();
+            _spriteBatch.Draw(texture: _texture,
+                position: _position,
+                sourceRectangle: null,
+                Color.White,
+                rotation: 0,
+                origin: new Vector2(_texture.Height / 2, _texture.Width / 2),
+                scale: 1f,
+                effects: SpriteEffects.None,
+                layerDepth: 0);
+            _spriteBatch.End();
+        }
     }
 
     public void Update(GameTime gameTime)
     {
-        if(CheckPositionX())
+        if (!_isGameEnded)
         {
-            ResetBall();
-            return;
+            if (CheckPositionX())
+            {
+                ResetBall();
+                return;
+            }
+            UpdatePositionX(gameTime);
+            UpdatePositionY(gameTime);
+            UpdateBorderBoxes();
         }
-        UpdatePositionX(gameTime);
-        UpdatePositionY(gameTime);
-        UpdateBorderBoxes();
     }
 
     public void Initialize()
@@ -84,13 +91,26 @@ public class Ball : IDrawable, IUpdateable, IGameComponent, ICollidable
             CalculateSpeed();
     }
 
+    public void OnGameEnded(object sender, GameEndedEventArgs eventArgs)
+    {
+        _isGameEnded = true;
+        _ballSpeedX = 0;
+        _ballSpeedY = 0;
+    }
+
+    public void OnGameRestarted(object sender, EventArgs eventArgs)
+    {
+        _isGameEnded = false;
+        ResetBall();
+    }
+
     private bool CheckPositionX()
     {
         if (_position.X <= 0)
         {
             GrantPoint(false); return true;
         }
-        if (_position.X >=800)
+        if (_position.X >= 800)
         {
             GrantPoint(true); return true;
         }
@@ -129,10 +149,7 @@ public class Ball : IDrawable, IUpdateable, IGameComponent, ICollidable
 
     private void GrantPoint(bool playerOneGetPoint)
     {
-        if (PointGranted != null)
-        {
-            PointGranted(this, new PointGrantedEventArgs(playerOneGetPoint));
-        }
+        PointGranted?.Invoke(this, new PointGrantedEventArgs(playerOneGetPoint));
     }
 
     private void ResetBall()
